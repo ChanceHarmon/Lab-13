@@ -10,6 +10,8 @@ module.exports = (req, res, next) => {
     switch (authType.toLowerCase()) {
       case 'basic':
         return _authBasic(authString);
+      case 'bearer':
+        return _authBearer(authString);
       default:
         return _authError();
     }
@@ -27,6 +29,14 @@ module.exports = (req, res, next) => {
     let auth = { username, password }; // { username:'john', password:'mysecret' }
 
     return User.authenticateBasic(auth)
+      .then(user => _authenticate(user))
+      .catch(next);
+  }
+
+  function _authBearer(authString) {
+    // Vinicio - this is a very similar function to
+    // 'authenticateBasic' but it starts by validating a token
+    return User.authenticateToken(authString)
       .then(user => _authenticate(user))
       .catch(next);
   }
