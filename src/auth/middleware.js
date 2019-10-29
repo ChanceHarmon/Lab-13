@@ -20,7 +20,12 @@ module.exports = (req, res, next) => {
     next(e);
   }
 
-
+  /**
+   *
+   * @param str
+   * @returns {Promise<T>}
+   * @private
+   */
   function _authBasic(str) {
     // str: am9objpqb2hubnk=
     let base64Buffer = Buffer.from(str, 'base64'); // <Buffer 01 02 ...>
@@ -34,8 +39,6 @@ module.exports = (req, res, next) => {
   }
 
   function _authBearer(authString) {
-    // Vinicio - this is a very similar function to
-    // 'authenticateBasic' but it starts by validating a token
     return User.authenticateToken(authString)
       .then(user => _authenticate(user))
       .catch(next);
