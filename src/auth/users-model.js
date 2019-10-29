@@ -3,7 +3,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-
+const tokens = {};
 const users = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
@@ -19,19 +19,6 @@ users.pre('save', function (next) {
     })
     .catch(console.error);
 });
-
-users.statics.authenticateToken = function (token) {
-  // Vinicio - JWT will decrypt tokens if you call the verify function
-  const decrpytedToken = jwt.verify(token, process.env.SECRET || 'secret');
-  // Vinicio , now I'm expecting something that looks like this
-  // {
-  //   id: this._id,
-  //   role: this.role,
-  // };
-  //Vinicio - now that I have this, I'm going to find a user based on the id
-  const query = { _id: decrpytedToken.id };
-  return this.findOne(query);
-};
 
 users.statics.createFromOauth = function (email) {
 
@@ -50,6 +37,23 @@ users.statics.createFromOauth = function (email) {
       return this.create({ username, password, email });
     });
 
+};
+
+users.statics.authenticateToken = function (token) {
+  const decryptedToken = jwt.verify(token, process.env.SECRET || 'secret');
+  const query = { _id: decryptedToken.id };
+  const oneUseToken = tokens.hasOwnProperty(token);
+
+
+  if (oneUseToken === true) {
+    console.log('invalid token');
+    return Promise.reject('invalid token stuff')
+      .then(process.env.EXPIRES === false);
+  } else if (oneUseToken === false) {
+    tokens[token] = token;
+    return this.findOne(query)
+      .then(process.env.EXPIRES === true);
+  }
 };
 
 users.statics.authenticateBasic = function (auth) {
@@ -71,7 +75,11 @@ users.methods.generateToken = function () {
     role: this.role,
   };
 
-  return jwt.sign(token, process.env.SECRET);
+  if (process.env.SINGLEUSE === true) {
+    return jwt.sign(token, process.env.SECRET || 'secret');
+  } else {
+    return jwt.sign(token, process.env.SECRET || 'secret', { expiresIn: 30 });
+  }
 };
 
 module.exports = mongoose.model('users', users);
